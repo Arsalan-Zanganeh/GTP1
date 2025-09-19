@@ -193,9 +193,7 @@ The main difference is how they handle the outer IP header: `gro_vxlan_tcp4_item
 
 ---
 
-### Conclusion
-
-In conclusion, the code initializes the necessary structures for GRO across TCP, UDP, and VXLAN protocols, ensuring all data is set to a clean initial state (zero) for efficient packet processing. Similarly, **GTP** (GPRS Tunneling Protocol) also has both **outer** and **inner headers**, making its design comparable to **VXLAN**. The outer header in GTP is responsible for packet tunneling and routing, while the inner header carries the user data or control messages, much like how **VXLAN** handles encapsulated data with outer and inner headers.
+The code initializes the necessary structures for GRO across TCP, UDP, and VXLAN protocols, ensuring all data is set to a clean initial state (zero) for efficient packet processing. Similarly, **GTP** (GPRS Tunneling Protocol) also has both **outer** and **inner headers**, making its design comparable to **VXLAN**. The outer header in GTP is responsible for packet tunneling and routing, while the inner header carries the user data or control messages, much like how **VXLAN** handles encapsulated data with outer and inner headers.
 
 # GTP-U Packet Aggregation Workflow
 ## Step 1: Packet Identification and Pre-filtering
