@@ -263,3 +263,217 @@ An aggregated packet segment cannot remain in the GRO reassembly table indefinit
 - **Periodic/Cycle-Based Flush**: As demonstrated in the testpmd application, flushing can be configured to occur every N processing cycles (set gro flush <cycles>). This provides a simple, load-dependent mechanism to ensure data is regularly forwarded. 
 
 The choice of flushing strategy must be deliberate. Furthermore, the reassembly tables themselves represent a finite memory resource. An attacker could launch a Denial-of-Service (DoS) attack by sending a flood of packets with randomized TEIDs, quickly exhausting the GRO hash table and preventing legitimate flows from being processed. Therefore, a robust implementation must include strict resource management: a maximum number of flows, a maximum number of stored packets per flow, and an aggressive timeout-based flushing policy to purge stale, incomplete flows.
+
+# What is GTP?
+
+- **GTP** = GPRS Tunneling Protocol
+- Used in **3G, 4G (LTE), and early 5G** mobile core networks.
+- Purpose: Carries **user data** (like IP packets) and **control signaling** (like session management) between core network elements.
+- Works over **UDP/IP**, usually on port **2152 (GTP-U)** and **2123 (GTP-C)**.
+
+------
+
+# GTP Versions
+
+- **GTPv0** → Old (2G).
+- **GTPv1** → Still widely used in 3G/4G.
+- **GTPv2** → Used in EPC (LTE core, mainly control).
+
+------
+
+# Two Main Types of GTPv1
+
+1. **GTP-C (Control Plane)**
+   - Manages sessions (create, modify, delete tunnels).
+   - Uses UDP **port 2123**.
+2. **GTP-U (User Plane)**
+   - Carries **user traffic (IP packets, voice, video, etc.)**.
+   - Uses UDP **port 2152**.
+
+------
+
+# GTP-v1 Packet Structure
+
+## GTP Common Header (minimum 8 bytes)
+
+Every GTP packet starts with this:
+
+| Field                                  | Size | Description                                                  |
+| -------------------------------------- | ---- | ------------------------------------------------------------ |
+| **Flags (Version, PT, E, S, PN bits)** | 1B   | Protocol type, extensions, sequence info                     |
+| **Message Type**                       | 1B   | Defines packet purpose (e.g., Echo Request, T-PDU, Create Session) |
+| **Length**                             | 2B   | Payload length (excluding header)                            |
+| **Tunnel Endpoint Identifier (TEID)**  | 4B   | Key that identifies the tunnel                               |
+
+------
+
+## Optional Fields
+
+If flags indicate extensions, extra fields are present:
+
+- **Sequence Number** (2B)
+  Identifies this PDU in sequence
+- **N-PDU Number** (1B)
+  Used for reordering (rare in LTE)
+- **Next Extension Header Type** (1B)
+
+------
+
+# Key Fields Explained
+
+- **TEID (Tunnel Endpoint Identifier)**
+
+  - Identifies the tunnel between nodes.
+
+- **Message Type**:
+
+  - Identifies the message type. Here are all message types in GTP version 1:
+
+    | Decimal | Hex    | Message Type                             |
+    | ------- | ------ | ---------------------------------------- |
+    | **1**   | **1**  | **Echo Request**                         |
+    | **2**   | **2**  | **Echo Response**                        |
+    | 3       | 3      | Version Not Supported                    |
+    | 4       | 4      | Node Alive Request                       |
+    | 5       | 5      | Node Alive Response                      |
+    | 6       | 6      | Redirection Request                      |
+    | 7       | 7      | Redirection Response                     |
+    | **16**  | **10** | **Create PDP Context Request**           |
+    | **17**  | **11** | **Create PDP Context Response**          |
+    | 18      | 12     | Update PDP Context Request               |
+    | 19      | 13     | Update PDP Context Response              |
+    | 20      | 14     | Delete PDP Context Request               |
+    | 21      | 15     | Delete PDP Context Response              |
+    | 22      | 16     | Initiate PDP Context Activation Request  |
+    | 23      | 17     | Initiate PDP Context Activation Response |
+    | 26      | 1A     | Error Indication                         |
+    | 27      | 1B     | PDU Notification Request                 |
+    | 28      | 1C     | PDU Notification Response                |
+    | 29      | 1D     | PDU Notification Reject Request          |
+    | 30      | 1E     | PDU Notification Reject Response         |
+    | 31      | 1F     | Supported Extensions Header Notification |
+    | 32      | 20     | Send Routing for GPRS Request            |
+    | 33      | 21     | Send Routing for GPRS Response           |
+    | 34      | 22     | Failure Report Request                   |
+    | 35      | 23     | Failure Report Response                  |
+    | 36      | 24     | Note MS Present Request                  |
+    | 37      | 25     | Note MS Present Response                 |
+    | 38      | 26     | Identification Request                   |
+    | 39      | 27     | Identification Response                  |
+    | 50      | 32     | SGSN Context Request                     |
+    | 51      | 33     | SGSN Context Response                    |
+    | 52      | 34     | SGSN Context Acknowledge                 |
+    | 53      | 35     | Forward Relocation Request               |
+    | 54      | 36     | Forward Relocation Response              |
+    | 55      | 37     | Forward Relocation Complete              |
+    | 56      | 38     | Relocation Cancel Request                |
+    | 57      | 39     | Relocation Cancel Response               |
+    | 58      | 3A     | Forward SRNS Context                     |
+    | 59      | 3B     | Forward Relocation Complete Acknowledge  |
+    | 60      | 3C     | Forward SRNS Context Acknowledge         |
+    | 61      | 3D     | UE Registration Request                  |
+    | 62      | 3E     | UE Registration Response                 |
+    | 70      | 46     | RAN Information Relay                    |
+    | 96      | 60     | MBMS Notification Request                |
+    | 97      | 61     | MBMS Notification Response               |
+    | 98      | 62     | MBMS Notification Reject Request         |
+    | 99      | 63     | MBMS Notification Reject Response        |
+    | 100     | 64     | Create MBMS Notification Request         |
+    | 101     | 65     | Create MBMS Notification Response        |
+    | 102     | 66     | Update MBMS Notification Request         |
+    | 103     | 67     | Update MBMS Notification Response        |
+    | 104     | 68     | Delete MBMS Notification Request         |
+    | 105     | 69     | Delete MBMS Notification Response        |
+    | 112     | 70     | MBMS Registration Request                |
+    | 113     | 71     | MBMS Registration Response               |
+    | 114     | 72     | MBMS De-Registration Request             |
+    | 115     | 73     | MBMS De-Registration Response            |
+    | 116     | 74     | MBMS Session Start Request               |
+    | 117     | 75     | MBMS Session Start Response              |
+    | 118     | 76     | MBMS Session Stop Request                |
+    | 119     | 77     | MBMS Session Stop Response               |
+    | 120     | 78     | MBMS Session Update Request              |
+    | 121     | 79     | MBMS Session Update Response             |
+    | 128     | 80     | MS Info Change Request                   |
+    | 129     | 81     | MS Info Change Response                  |
+    | 240     | F0     | Data Record Transfer Request             |
+    | 241     | F1     | Data Record Transfer Response            |
+    | 254     | FE     | End Marker                               |
+    | 255     | FF     | G-PDU                                    |
+
+    Here are some important message types explained:
+
+    | Message Type                                      | Value | Purpose                                                      |
+    | ------------------------------------------------- | ----- | ------------------------------------------------------------ |
+    | **Echo Request (1)**                              | 1     | "Hello, are you alive?" – keepalive check between nodes (SGSN, GGSN, SGW, PGW). |
+    | **Echo Response (2)**                             | 2     | Reply to Echo Request. Confirms node is reachable.           |
+    | **Create PDP Context Request (16)**               | 16    | Sent by SGSN → GGSN to set up a new session (PDP context = subscriber session). Contains IMSI, APN, QoS, TEID. |
+    | **Create PDP Context Response (17)**              | 17    | Reply from GGSN with result (success/failure), assigned TEIDs. |
+    | **Update PDP Context Request (18)**               | 18    | Modify an existing session (QoS change, new SGSN after handover, etc.). |
+    | **Update PDP Context Response (19)**              | 19    | Reply to the update request.                                 |
+    | **Delete PDP Context Request (20)**               | 20    | Tear down a subscriber’s session (release tunnel, free TEIDs). |
+    | **Delete PDP Context Response (21)**              | 21    | Acknowledgement of deletion.                                 |
+    | **Error Indication (26)**                         | 26    | Sent if a packet arrives with an unknown TEID or other errors. |
+    | **Supported Extension Headers Notification (31)** | 31    | Lets peers know which optional extensions they support.      |
+
+- **Flags**
+
+  - Version = 1 (for GTPv1).
+  - PT = Protocol Type (GTP = 1, GTP’ = 0).
+  - E, S, PN = indicate optional fields (extension headers, sequence number, N-PDU).
+  - Example of a Control Plane GTP packet flags:
+    ![image-20250921020354697](Pics/1.png)
+
+------
+
+#  GTPv1-U Example (User Plane)
+
+When a user streams YouTube on 4G:
+
+- The **IP packet** (from user’s phone) gets wrapped in GTPv1-U.
+- GTP header (with TEID) + user’s IP packet payload.
+- Sent via **UDP 2152** → across the mobile core → unwrapped at destination.
+
+------
+
+#  GTPv1-C Example (Control Plane)
+
+When a user attaches to the network:
+
+- SGSN (Serving GPRS Support Node) sends **Create PDP Context Request** to GGSN (with IMSI, APN, QoS).
+- GGSN (Gateway GPRS Support Node) replies with **Create PDP Context Response** (accept/reject, assigns TEID).
+- Tunnel is established.
+
+Certainly! I've analyzed the provided GTPv1 packet capture file from CloudShark. Here's a detailed analysis report based on the observed traffic:
+
+------
+
+# **test.pcap Analysis Report**
+
+First a Context Request and Response exchange happened:
+
+![image-20250921151233046](Pics/2.png)
+
+Using this command in Windows PowerShell gives us all different message types of this pcap file:
+
+```powershell
+.\tshark.exe -r /path/to/your/capture.pcap -Y gtp -T fields -e gtp.message | Group-Object | Sort-Object Count -Descending | Format-Table Count, Name
+```
+
+Same action can be performed using Linux terminal:
+
+```bash
+tshark -r /path/to/your/capture.pcap -Y gtp -T fields -e gtp.msg_type | sort | uniq -c
+```
+
+The output for this capture file is:
+![image-20250921152836870](Pics/3.png)
+
+It indicates the first handshake at the beginning of the capture file and the rest of the file which is only data exchange judging by the message type 255 which indicates GTP user plane packets.
+
+### **Findings**
+
+- It looks like a **successful attach and data session**:
+  - Request (16) from SGSN/SGW → Response (17) from GGSN/PGW → steady GTP-U 255 packets.
+- No delete messages captured → session probably continued beyond the trace.
+- Network health looks normal (no error responses, no rejects)
